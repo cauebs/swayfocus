@@ -1,7 +1,8 @@
 [package]
-version = "0.1.0"
+version = "0.1.1"
 name = "swayfocus"
 description = "Daemon for reducing opacity of non-focused sway windows."
+readme = "README.md"
 
 repository = "https://github.com/cauebs/swayfocus"
 authors = ["Cauê Baasch de Souza <cauebs@pm.me>"]
