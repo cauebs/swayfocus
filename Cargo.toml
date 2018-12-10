@@ -1,5 +1,5 @@
 [package]
-version = "0.1.1"
+version = "0.1.2"
 name = "swayfocus"
 description = "Daemon for reducing opacity of non-focused sway windows."
 readme = "README.md"

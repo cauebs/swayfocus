@@ -15,8 +15,10 @@ use structopt::{
 
 use std::{process::exit, thread};
 
-fn set_opacity(ipc: &mut I3Connection, node: &Node, opacity: f32) -> Result<(), Error> {
-    let command = format!("[con_id=\"{}\"] opacity {}", node.id, opacity);
+type NodeID = i64;
+
+fn set_opacity(ipc: &mut I3Connection, node_id: NodeID, opacity: f32) -> Result<(), Error> {
+    let command = format!("[con_id=\"{}\"] opacity {}", node_id, opacity);
     ipc.run_command(&command)?;
     Ok(())
 }
@@ -25,20 +27,21 @@ fn find_focused(
     ipc: &mut I3Connection,
     root: Node,
     non_focused_opacity: f32,
-) -> Result<Option<Node>, Error> {
-    if root.focused {
-        return Ok(Some(root));
-    }
-
-    set_opacity(ipc, &root, non_focused_opacity)?;
+) -> Result<Option<NodeID>, Error> {
+    let mut focused = if root.focused {
+        Some(root.id)
+    } else {
+        set_opacity(ipc, root.id, non_focused_opacity)?;
+        None
+    };
 
     for node in root.nodes {
-        if let Some(n) = find_focused(ipc, node, non_focused_opacity)? {
-            return Ok(Some(n));
+        if let Some(id) = find_focused(ipc, node, non_focused_opacity)? {
+            focused = Some(id);
         }
     }
 
-    Ok(None)
+    Ok(focused)
 }
 
 fn handle_signals() -> Result<(), Error> {
@@ -72,7 +75,7 @@ fn main() -> Result<(), ExitFailure> {
     let mut ipc = I3Connection::connect()?;
 
     let root = ipc.get_tree()?;
-    let mut last_focused = find_focused(&mut ipc, root, cli.opacity)?
+    let mut last_focused_id = find_focused(&mut ipc, root, cli.opacity)?
         .expect("Expected at least one window to be initially focused.");
 
     let mut listener = I3EventListener::connect()?;
@@ -84,9 +87,9 @@ fn main() -> Result<(), ExitFailure> {
         if let Event::WindowEvent(info) = event? {
             if let WindowChange::Focus = info.change {
                 let focused = info.container;
-                set_opacity(&mut ipc, &last_focused, cli.opacity)?;
-                set_opacity(&mut ipc, &focused, 1.0)?;
-                last_focused = focused;
+                set_opacity(&mut ipc, last_focused_id, cli.opacity)?;
+                set_opacity(&mut ipc, focused.id, 1.0)?;
+                last_focused_id = focused.id;
             }
         }
     }
